@@ -5,6 +5,7 @@ import android.app.Activity;
 import android.content.ClipData;
 import android.content.Context;
 import android.content.ContentResolver;
+import android.content.ContentValues;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
@@ -52,6 +53,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 
+import android.media.MediaScannerConnection;
 
 
 class PickerModule extends ReactContextBaseJavaModule implements ActivityEventListener {
@@ -364,7 +366,7 @@ class PickerModule extends ReactContextBaseJavaModule implements ActivityEventLi
 
     private void initiatePicker(final Activity activity) {
         try {
-            final Intent galleryIntent = new Intent(Intent.ACTION_GET_CONTENT);
+            final Intent galleryIntent = new Intent(Intent.ACTION_GET_CONTENT, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
 
             if (cropping || mediaType.equals("photo")) {
                 galleryIntent.setType("image/*");
@@ -754,8 +756,12 @@ class PickerModule extends ReactContextBaseJavaModule implements ActivityEventLi
             configureCropperColors(options);
         }
 
+        String imageFileName = UUID.randomUUID().toString();
+
+        File file = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM + "/Camera"), imageFileName + ".jpg");
+
         UCrop uCrop = UCrop
-                .of(uri, Uri.fromFile(new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM + "/Camera"), UUID.randomUUID().toString() + ".jpg")))
+                .of(uri, Uri.fromFile(file))
                 .withOptions(options);
 
         if (width > 0 && height > 0) {
@@ -819,6 +825,36 @@ class PickerModule extends ReactContextBaseJavaModule implements ActivityEventLi
                 return;
             }
 
+            ContentResolver resolver = this.reactContext.getContentResolver();
+            ContentValues values = new ContentValues();
+            values.put(MediaStore.Images.Media.TITLE, "My image");
+            values.put(MediaStore.Images.Media.DESCRIPTION, "Image created by my app");
+            values.put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg");
+            values.put(MediaStore.Images.Media.DATE_ADDED, System.currentTimeMillis() / 1000);
+            values.put(MediaStore.Images.Media.DATE_TAKEN, System.currentTimeMillis());
+            values.put(MediaStore.Images.Media.DATA, uri.getPath());
+            Uri mediaUri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
+
+            if (mediaUri != null) {
+                // Notify the media store of the new file
+                resolver.notifyChange(mediaUri, null);
+            }
+
+            String mediaPath = "file:" + uri.getPath();
+
+            MediaScannerConnection.scanFile(this.reactContext, new String[] {uri.getPath()}, null,
+            new MediaScannerConnection.OnScanCompletedListener() {
+                public void onScanCompleted(String path, Uri uri) {
+                    System.out.println("crop: onScanCompleted");
+                    System.out.println("Scanned " + path + ":");
+                    System.out.println("-> uri=" + uri);
+                }
+            });
+
+            if (mediaUri != null) {
+                System.out.println("The file was inserted successfully");
+            }
+
             if (cropping) {
                 UCrop.Options options = new UCrop.Options();
                 options.setCompressionFormat(Bitmap.CompressFormat.JPEG);
@@ -845,9 +881,12 @@ class PickerModule extends ReactContextBaseJavaModule implements ActivityEventLi
 
             if (resultUri != null) {
                 try {
+                    String filename = null;
+
                     if (width > 0 && height > 0) {
                         File resized = compression.resize(this.reactContext, resultUri.getPath(), width, height, width, height, 100);
                         resultUri = Uri.fromFile(resized);
+                        filename = resized.getName();
                     }
 
                     WritableMap result = getSelection(activity, resultUri, false);
@@ -859,6 +898,36 @@ class PickerModule extends ReactContextBaseJavaModule implements ActivityEventLi
                         resultCollector.notifySuccess(result);
                     } else {
                         throw new Exception("Cannot crop video files");
+                    }
+
+                    ContentResolver resolver = this.reactContext.getContentResolver();
+                    ContentValues values = new ContentValues();
+                    values.put(MediaStore.Images.Media.TITLE, "My image");
+                    values.put(MediaStore.Images.Media.DESCRIPTION, "Image created by my app");
+                    values.put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg");
+                    values.put(MediaStore.Images.Media.DATE_ADDED, System.currentTimeMillis() / 1000);
+                    values.put(MediaStore.Images.Media.DATE_TAKEN, System.currentTimeMillis());
+                    values.put(MediaStore.Images.Media.DATA, resultUri.getPath());
+                    Uri mediaUri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
+
+                    if (mediaUri != null) {
+                        // Notify the media store of the new file
+                        resolver.notifyChange(mediaUri, null);
+                    }
+
+                    String mediaPath = "file:" + resultUri.getPath();
+
+                    MediaScannerConnection.scanFile(this.reactContext, new String[] {resultUri.getPath()}, null,
+                    new MediaScannerConnection.OnScanCompletedListener() {
+                        public void onScanCompleted(String path, Uri uri) {
+                            System.out.println("crop: onScanCompleted");
+                            System.out.println("Scanned " + path + ":");
+                            System.out.println("-> uri=" + uri);
+                        }
+                    });
+
+                    if (mediaUri != null) {
+                        System.out.println("The file was inserted successfully");
                     }
                 } catch (Exception ex) {
                     resultCollector.notifyProblem(E_NO_IMAGE_DATA_FOUND, ex.getMessage());
