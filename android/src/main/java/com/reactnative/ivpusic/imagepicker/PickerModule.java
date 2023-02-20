@@ -755,7 +755,7 @@ class PickerModule extends ReactContextBaseJavaModule implements ActivityEventLi
         }
 
         UCrop uCrop = UCrop
-                .of(uri, Uri.fromFile(new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM).toString() + "/Camera", UUID.randomUUID().toString() + ".jpg")))
+                .of(uri, Uri.fromFile(new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM + "/Camera"), UUID.randomUUID().toString() + ".jpg")))
                 .withOptions(options);
 
         if (width > 0 && height > 0) {
@@ -895,7 +895,7 @@ class PickerModule extends ReactContextBaseJavaModule implements ActivityEventLi
 
         String imageFileName = "image-" + UUID.randomUUID().toString();
         // Get the path to the Pictures folder
-        File path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM).toString() + "/Camera";
+        File path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM + "/Camera");
 
         if (!path.exists() && !path.isDirectory()) {
             path.mkdirs();
