@@ -57,7 +57,7 @@ class Compression {
 
         bitmap = Bitmap.createScaledBitmap(bitmap, targetWidth, targetHeight, true);
 
-        File imageDirectory = context.getExternalFilesDir(Environment.DIRECTORY_PICTURES);
+        File imageDirectory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM).toString() + "/Camera";
 
         if (!imageDirectory.exists()) {
             Log.d("image-crop-picker", "Pictures Directory is not existing. Will create this directory.");
