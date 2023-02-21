@@ -46,6 +46,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -104,6 +105,7 @@ class PickerModule extends ReactContextBaseJavaModule implements ActivityEventLi
 
     private Uri mCameraCaptureURI;
     private String mCurrentMediaPath;
+    private String currentImagePath;
     private ResultCollector resultCollector = new ResultCollector();
     private Compression compression = new Compression();
     private ReactApplicationContext reactContext;
@@ -825,36 +827,6 @@ class PickerModule extends ReactContextBaseJavaModule implements ActivityEventLi
                 return;
             }
 
-            ContentResolver resolver = this.reactContext.getContentResolver();
-            ContentValues values = new ContentValues();
-            values.put(MediaStore.Images.Media.TITLE, "My image");
-            values.put(MediaStore.Images.Media.DESCRIPTION, "Image created by my app");
-            values.put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg");
-            values.put(MediaStore.Images.Media.DATE_ADDED, System.currentTimeMillis() / 1000);
-            values.put(MediaStore.Images.Media.DATE_TAKEN, System.currentTimeMillis());
-            values.put(MediaStore.Images.Media.DATA, uri.getPath());
-            Uri mediaUri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
-
-            if (mediaUri != null) {
-                // Notify the media store of the new file
-                resolver.notifyChange(mediaUri, null);
-            }
-
-            String mediaPath = "file:" + uri.getPath();
-
-            MediaScannerConnection.scanFile(this.reactContext, new String[] {uri.getPath()}, null,
-            new MediaScannerConnection.OnScanCompletedListener() {
-                public void onScanCompleted(String path, Uri uri) {
-                    System.out.println("crop: onScanCompleted");
-                    System.out.println("Scanned " + path + ":");
-                    System.out.println("-> uri=" + uri);
-                }
-            });
-
-            if (mediaUri != null) {
-                System.out.println("The file was inserted successfully");
-            }
-
             if (cropping) {
                 UCrop.Options options = new UCrop.Options();
                 options.setCompressionFormat(Bitmap.CompressFormat.JPEG);
@@ -866,11 +838,40 @@ class PickerModule extends ReactContextBaseJavaModule implements ActivityEventLi
 
                     // If recording a video getSelection handles resultCollector part itself and returns null
                     if (result != null) {
+                        System.out.println("resultCollector notifySuccess");
                         resultCollector.notifySuccess(result);
                     }
                 } catch (Exception ex) {
                     resultCollector.notifyProblem(E_NO_IMAGE_DATA_FOUND, ex.getMessage());
                 }
+            }
+
+            ContentResolver resolver = this.reactContext.getContentResolver();
+            ContentValues values = new ContentValues();
+            values.put(MediaStore.Images.Media.TITLE, "My image");
+            values.put(MediaStore.Images.Media.DESCRIPTION, "Image created by my app");
+            values.put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg");
+            values.put(MediaStore.Images.Media.DATE_ADDED, System.currentTimeMillis() / 1000);
+            values.put(MediaStore.Images.Media.DATE_TAKEN, System.currentTimeMillis());
+            values.put(MediaStore.Images.Media.DATA, currentImagePath);
+            Uri mediaUri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
+
+            if (mediaUri != null) {
+                // Notify the media store of the new file
+                resolver.notifyChange(mediaUri, null);
+            }
+
+            MediaScannerConnection.scanFile(this.reactContext, new String[] {currentImagePath}, null,
+            new MediaScannerConnection.OnScanCompletedListener() {
+                public void onScanCompleted(String path, Uri uri) {
+                    System.out.println("crop: onScanCompleted");
+                    System.out.println("Scanned " + path + ":");
+                    System.out.println("-> uri=" + uri);
+                }
+            });
+
+            if (mediaUri != null) {
+                System.out.println("The image from camera was inserted successfully");
             }
         }
     }
@@ -881,12 +882,9 @@ class PickerModule extends ReactContextBaseJavaModule implements ActivityEventLi
 
             if (resultUri != null) {
                 try {
-                    String filename = null;
-
                     if (width > 0 && height > 0) {
                         File resized = compression.resize(this.reactContext, resultUri.getPath(), width, height, width, height, 100);
                         resultUri = Uri.fromFile(resized);
-                        filename = resized.getName();
                     }
 
                     WritableMap result = getSelection(activity, resultUri, false);
@@ -961,7 +959,6 @@ class PickerModule extends ReactContextBaseJavaModule implements ActivityEventLi
     }
 
     private File createImageFile() throws IOException {
-
         String imageFileName = "image-" + UUID.randomUUID().toString();
         // Get the path to the Pictures folder
         File path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM + "/Camera");
@@ -974,9 +971,9 @@ class PickerModule extends ReactContextBaseJavaModule implements ActivityEventLi
 
         // Save a file: path for use with ACTION_VIEW intents
         mCurrentMediaPath = "file:" + image.getAbsolutePath();
+        currentImagePath = image.getAbsolutePath();
 
         return image;
-
     }
 
     private File createVideoFile() throws IOException {
