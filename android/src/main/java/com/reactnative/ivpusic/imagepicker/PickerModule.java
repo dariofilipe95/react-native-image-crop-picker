@@ -102,6 +102,7 @@ class PickerModule extends ReactContextBaseJavaModule implements ActivityEventLi
 
     private int width = 0;
     private int height = 0;
+    private File dataFile;
 
     private Uri mCameraCaptureURI;
     private String mCurrentMediaPath;
@@ -326,7 +327,6 @@ class PickerModule extends ReactContextBaseJavaModule implements ActivityEventLi
 
         try {
             String intent;
-            File dataFile;
 
             if (mediaType.equals("video")) {
                 intent = MediaStore.ACTION_VIDEO_CAPTURE;
@@ -819,6 +819,7 @@ class PickerModule extends ReactContextBaseJavaModule implements ActivityEventLi
     private void cameraPickerResult(Activity activity, final int requestCode, final int resultCode, final Intent data) {
         if (resultCode == Activity.RESULT_CANCELED) {
             resultCollector.notifyProblem(E_PICKER_CANCELLED_KEY, E_PICKER_CANCELLED_MSG);
+            datafile.deleteOnExit();
         } else if (resultCode == Activity.RESULT_OK) {
             Uri uri = mCameraCaptureURI;
 
