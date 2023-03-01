@@ -873,6 +873,7 @@ class PickerModule extends ReactContextBaseJavaModule implements ActivityEventLi
             if (mediaUri != null) {
                 System.out.println("The image from camera was inserted successfully");
             }
+            initiateCamera(activity);
         }
     }
 
